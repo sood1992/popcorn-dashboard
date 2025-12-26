@@ -1,9 +1,7 @@
 // =============================================================================
-// POPCORN GPS COLLAR V6.1 - WEB DASHBOARD (ANTI-CHEAT EDITION)
+// POPCORN GPS COLLAR V6.1 - PREMIUM DASHBOARD
 // =============================================================================
-// Deploy to Vercel (free): https://vercel.com
-// 
-// All V6.0 features retained + Anti-cheat walk verification added
+// Modern UI with Vuexy-inspired design: gradients, shadows, animations
 // =============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -17,7 +15,6 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const DEVICE_ID = import.meta.env.VITE_DEVICE_ID || 'POPCORN001';
 
-// Initialize Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // =============================================================================
@@ -26,18 +23,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const formatTime = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
+    return new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 };
 
 const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short'
-    });
+    return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
 const formatDuration = (seconds) => {
@@ -48,38 +39,15 @@ const formatDuration = (seconds) => {
     return `${minutes}m`;
 };
 
-const getActivityEmoji = (activityClass) => {
-    switch (activityClass) {
-        case 0: return '😴';
-        case 1: return '🧘';
-        case 2: return '🚶';
-        case 3: return '🏃';
-        case 4: return '🎾';
-        default: return '❓';
-    }
-};
-
-const getGradeColor = (grade) => {
-    switch (grade) {
-        case 'A': return 'text-green-400';
-        case 'B': return 'text-blue-400';
-        case 'C': return 'text-yellow-400';
-        case 'F': return 'text-red-400';
-        default: return 'text-gray-400';
-    }
-};
-
-// V6.1: Anti-cheat verification status colors
-const getVerificationColor = (status) => {
-    switch (status) {
-        case 'excellent': return 'bg-green-600';
-        case 'good': return 'bg-blue-600';
-        case 'fair': return 'bg-yellow-600';
-        case 'poor': return 'bg-red-600';
-        case 'vehicle_detected': return 'bg-red-700';
-        case 'excess_carrying': return 'bg-orange-600';
-        default: return 'bg-gray-600';
-    }
+const getActivityInfo = (activityClass) => {
+    const activities = [
+        { emoji: '😴', name: 'Resting', color: 'from-slate-400 to-slate-500' },
+        { emoji: '🧘', name: 'Still', color: 'from-blue-400 to-blue-500' },
+        { emoji: '🚶', name: 'Walking', color: 'from-emerald-400 to-emerald-500' },
+        { emoji: '🏃', name: 'Running', color: 'from-orange-400 to-orange-500' },
+        { emoji: '🎾', name: 'Playing', color: 'from-pink-400 to-pink-500' }
+    ];
+    return activities[activityClass] || { emoji: '❓', name: 'Unknown', color: 'from-gray-400 to-gray-500' };
 };
 
 // =============================================================================
@@ -87,7 +55,6 @@ const getVerificationColor = (status) => {
 // =============================================================================
 
 export default function App() {
-    // State
     const [status, setStatus] = useState(null);
     const [locations, setLocations] = useState([]);
     const [sleepHistory, setSleepHistory] = useState([]);
@@ -97,27 +64,23 @@ export default function App() {
     const [walkerStats, setWalkerStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('map');
+    const [activeTab, setActiveTab] = useState('overview');
     const [lastRefresh, setLastRefresh] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
-    // Fetch all data
     const fetchData = useCallback(async () => {
         try {
             setError(null);
             
-            // Fetch device status
             const { data: statusData, error: statusError } = await supabase
                 .from('device_status')
                 .select('*')
                 .eq('device_id', DEVICE_ID)
                 .single();
             
-            if (statusError && statusError.code !== 'PGRST116') {
-                throw statusError;
-            }
+            if (statusError && statusError.code !== 'PGRST116') throw statusError;
             setStatus(statusData);
 
-            // Fetch recent locations (24 hours)
             const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
             const { data: locData } = await supabase
                 .from('locations')
@@ -127,7 +90,6 @@ export default function App() {
                 .order('recorded_at', { ascending: true });
             setLocations(locData || []);
 
-            // Fetch sleep history (7 days)
             const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
             const { data: sleepData } = await supabase
                 .from('sleep_sessions')
@@ -137,7 +99,6 @@ export default function App() {
                 .order('started_at', { ascending: false });
             setSleepHistory(sleepData || []);
 
-            // Fetch scratch history (7 days)
             const { data: scratchData } = await supabase
                 .from('scratch_daily')
                 .select('*')
@@ -146,7 +107,6 @@ export default function App() {
                 .order('date', { ascending: false });
             setScratchHistory(scratchData || []);
 
-            // Fetch walk history (30 days)
             const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
             const { data: walkData } = await supabase
                 .from('walk_sessions')
@@ -156,20 +116,13 @@ export default function App() {
                 .order('started_at', { ascending: false });
             setWalkHistory(walkData || []);
 
-            // V6.1: Calculate walker stats from walk data
             if (walkData && walkData.length > 0) {
                 const stats = {
                     total_walks: walkData.length,
                     avg_quality_score: walkData.reduce((sum, w) => sum + (w.quality_score || w.grade_score || 0), 0) / walkData.length,
                     excellent_walks: walkData.filter(w => (w.quality_score || w.grade_score || 0) >= 90).length,
-                    good_walks: walkData.filter(w => {
-                        const score = w.quality_score || w.grade_score || 0;
-                        return score >= 70 && score < 90;
-                    }).length,
-                    fair_walks: walkData.filter(w => {
-                        const score = w.quality_score || w.grade_score || 0;
-                        return score >= 50 && score < 70;
-                    }).length,
+                    good_walks: walkData.filter(w => { const s = w.quality_score || w.grade_score || 0; return s >= 70 && s < 90; }).length,
+                    fair_walks: walkData.filter(w => { const s = w.quality_score || w.grade_score || 0; return s >= 50 && s < 70; }).length,
                     poor_walks: walkData.filter(w => (w.quality_score || w.grade_score || 0) < 50).length,
                     total_distance_km: (walkData.reduce((sum, w) => sum + (w.distance_meters || 0), 0) / 1000).toFixed(2),
                     avg_carried_percent: walkData.reduce((sum, w) => sum + (w.carried_percent || 0), 0) / walkData.length,
@@ -178,7 +131,6 @@ export default function App() {
                 setWalkerStats(stats);
             }
 
-            // Fetch unacknowledged anomalies
             const { data: anomalyData } = await supabase
                 .from('anomaly_log')
                 .select('*')
@@ -189,7 +141,6 @@ export default function App() {
 
             setLastRefresh(new Date());
             setLoading(false);
-            
         } catch (err) {
             console.error('Fetch error:', err);
             setError(err.message);
@@ -197,11 +148,8 @@ export default function App() {
         }
     }, []);
 
-    // Initial fetch and setup real-time subscription
     useEffect(() => {
         fetchData();
-
-        // Real-time subscription for device status
         const subscription = supabase
             .channel('device_status_changes')
             .on('postgres_changes', {
@@ -210,47 +158,51 @@ export default function App() {
                 table: 'device_status',
                 filter: `device_id=eq.${DEVICE_ID}`
             }, (payload) => {
-                console.log('Real-time update:', payload);
                 setStatus(payload.new);
                 setLastRefresh(new Date());
             })
             .subscribe();
 
-        // Refresh every 30 seconds
         const interval = setInterval(fetchData, 30000);
-
         return () => {
             subscription.unsubscribe();
             clearInterval(interval);
         };
     }, [fetchData]);
 
-    // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mx-auto mb-4"></div>
-                    <h2 className="text-xl text-white">Loading Popcorn's Data...</h2>
-                    <p className="text-gray-400 mt-2">🐕 Woof!</p>
+                    <div className="relative w-20 h-20 mx-auto mb-6">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 animate-ping opacity-20"></div>
+                        <div className="relative w-20 h-20 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 flex items-center justify-center animate-pulse">
+                            <span className="text-4xl">🐕</span>
+                        </div>
+                    </div>
+                    <h2 className="text-xl font-semibold text-slate-700">Loading Popcorn's Data...</h2>
+                    <p className="text-slate-400 mt-2">Please wait a moment</p>
                 </div>
             </div>
         );
     }
 
-    // Error state
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-                <div className="text-center max-w-md">
-                    <div className="text-6xl mb-4">⚠️</div>
-                    <h2 className="text-xl text-white mb-2">Connection Error</h2>
-                    <p className="text-gray-400 mb-4">{error}</p>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                    <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">Connection Error</h2>
+                    <p className="text-slate-500 mb-6">{error}</p>
                     <button 
                         onClick={fetchData}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                        className="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-violet-200 transition-all duration-300"
                     >
-                        Retry
+                        Try Again
                     </button>
                 </div>
             </div>
@@ -258,43 +210,126 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white">
-            {/* Header */}
-            <Header status={status} lastRefresh={lastRefresh} onRefresh={fetchData} />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+            {/* Sidebar */}
+            <Sidebar 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                isOpen={sidebarOpen}
+                status={status}
+            />
             
-            {/* Alert Banner */}
-            {anomalies.length > 0 && <AlertBanner anomalies={anomalies} />}
-            
-            {/* Escape Alert */}
-            {status?.is_escaped && <EscapeAlert status={status} />}
+            {/* Main Content */}
+            <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+                {/* Top Header */}
+                <Header 
+                    status={status} 
+                    lastRefresh={lastRefresh} 
+                    onRefresh={fetchData}
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
+                />
+                
+                {/* Alert Banners */}
+                {anomalies.length > 0 && <AlertBanner anomalies={anomalies} />}
+                {status?.is_escaped && <EscapeAlert status={status} />}
+                
+                {/* Content */}
+                <main className="p-6">
+                    {activeTab === 'overview' && (
+                        <OverviewView status={status} locations={locations} walkHistory={walkHistory} walkerStats={walkerStats} sleepHistory={sleepHistory} />
+                    )}
+                    {activeTab === 'map' && (
+                        <MapView status={status} locations={locations} />
+                    )}
+                    {activeTab === 'activity' && (
+                        <ActivityView status={status} locations={locations} />
+                    )}
+                    {activeTab === 'sleep' && (
+                        <SleepView sleepHistory={sleepHistory} status={status} />
+                    )}
+                    {activeTab === 'health' && (
+                        <HealthView scratchHistory={scratchHistory} anomalies={anomalies} />
+                    )}
+                    {activeTab === 'walks' && (
+                        <WalksView walkHistory={walkHistory} walkerStats={walkerStats} status={status} />
+                    )}
+                </main>
+            </div>
+        </div>
+    );
+}
+
+// =============================================================================
+// SIDEBAR COMPONENT
+// =============================================================================
+
+function Sidebar({ activeTab, setActiveTab, isOpen, status }) {
+    const menuItems = [
+        { id: 'overview', icon: '📊', label: 'Overview' },
+        { id: 'map', icon: '📍', label: 'Live Map' },
+        { id: 'activity', icon: '🏃', label: 'Activity' },
+        { id: 'sleep', icon: '😴', label: 'Sleep' },
+        { id: 'health', icon: '❤️', label: 'Health' },
+        { id: 'walks', icon: '🚶', label: 'Walks' },
+    ];
+
+    return (
+        <aside className={`fixed left-0 top-0 h-full bg-white shadow-xl z-40 transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
+            {/* Logo */}
+            <div className="h-20 flex items-center px-6 border-b border-slate-100">
+                <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                        <span className="text-xl">🐕</span>
+                    </div>
+                    {isOpen && (
+                        <div className="animate-fadeIn">
+                            <h1 className="font-bold text-slate-800">Popcorn</h1>
+                            <p className="text-xs text-slate-400">GPS Tracker v6.1</p>
+                        </div>
+                    )}
+                </div>
+            </div>
             
             {/* Navigation */}
-            <TabNav activeTab={activeTab} setActiveTab={setActiveTab} />
+            <nav className="p-4 space-y-2">
+                {menuItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                            activeTab === item.id
+                                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-200'
+                                : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        <span className="text-xl">{item.icon}</span>
+                        {isOpen && <span className="font-medium">{item.label}</span>}
+                    </button>
+                ))}
+            </nav>
             
-            {/* Content */}
-            <main className="container mx-auto px-4 py-6">
-                {activeTab === 'map' && (
-                    <MapView status={status} locations={locations} />
-                )}
-                {activeTab === 'activity' && (
-                    <ActivityView status={status} locations={locations} />
-                )}
-                {activeTab === 'sleep' && (
-                    <SleepView sleepHistory={sleepHistory} status={status} />
-                )}
-                {activeTab === 'health' && (
-                    <HealthView scratchHistory={scratchHistory} anomalies={anomalies} />
-                )}
-                {activeTab === 'walks' && (
-                    <WalksView walkHistory={walkHistory} walkerStats={walkerStats} />
-                )}
-            </main>
-            
-            {/* Footer */}
-            <footer className="text-center py-4 text-gray-500 text-xs">
-                Popcorn GPS Collar V6.1 Anti-Cheat • Made with ❤️
-            </footer>
-        </div>
+            {/* Status Card */}
+            {isOpen && status && (
+                <div className="absolute bottom-4 left-4 right-4">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 text-white">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm text-slate-400">Device Status</span>
+                            <span className={`w-2 h-2 rounded-full ${status?.last_seen_at && (Date.now() - new Date(status.last_seen_at)) < 300000 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-2xl font-bold">{status?.battery_percent || 0}%</p>
+                                <p className="text-xs text-slate-400">Battery</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                                <span className="text-2xl">🔋</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </aside>
     );
 }
 
@@ -302,72 +337,74 @@ export default function App() {
 // HEADER COMPONENT
 // =============================================================================
 
-function Header({ status, lastRefresh, onRefresh }) {
+function Header({ status, lastRefresh, onRefresh, sidebarOpen, setSidebarOpen }) {
     const getConnectionStatus = () => {
-        if (!status?.last_seen_at) return { text: 'Never connected', color: 'red' };
-        
-        const lastSeen = new Date(status.last_seen_at);
-        const minutes = (Date.now() - lastSeen) / 60000;
-        
-        if (minutes < 5) return { text: 'Online', color: 'green' };
-        if (minutes < 60) return { text: `${Math.floor(minutes)}m ago`, color: 'yellow' };
-        return { text: 'Offline', color: 'red' };
+        if (!status?.last_seen_at) return { text: 'Never connected', color: 'bg-red-100 text-red-600' };
+        const minutes = (Date.now() - new Date(status.last_seen_at)) / 60000;
+        if (minutes < 5) return { text: 'Online', color: 'bg-emerald-100 text-emerald-600' };
+        if (minutes < 60) return { text: `${Math.floor(minutes)}m ago`, color: 'bg-amber-100 text-amber-600' };
+        return { text: 'Offline', color: 'bg-red-100 text-red-600' };
     };
 
     const connection = getConnectionStatus();
-    const batteryColor = status?.battery_percent > 50 ? 'green' : 
-                         status?.battery_percent > 20 ? 'yellow' : 'red';
 
     return (
-        <header className="bg-gray-800 border-b border-gray-700">
-            <div className="container mx-auto px-4 py-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    {/* Logo */}
-                    <div className="flex items-center space-x-3">
-                        <span className="text-4xl">🐕</span>
-                        <div>
-                            <h1 className="text-2xl font-bold">Popcorn Tracker</h1>
-                            <p className="text-gray-400 text-sm">v6.1 Anti-Cheat</p>
-                        </div>
+        <header className="h-20 bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-30">
+            <div className="h-full px-6 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <button 
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                    >
+                        <svg className="w-6 h-6 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h2 className="text-lg font-semibold text-slate-800">
+                            Welcome back! 👋
+                        </h2>
+                        <p className="text-sm text-slate-400">
+                            Here's what's happening with Popcorn today
+                        </p>
                     </div>
-
-                    {/* Status Pills */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Connection */}
-                        <div className="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
-                            <div className={`w-2 h-2 rounded-full bg-${connection.color}-500 ${connection.color === 'green' ? 'animate-pulse' : ''}`}></div>
-                            <span className="text-sm">{connection.text}</span>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                    {/* Connection Status */}
+                    <div className={`px-4 py-2 rounded-xl text-sm font-medium ${connection.color}`}>
+                        {connection.text}
+                    </div>
+                    
+                    {/* Location Badge */}
+                    {status?.is_escaped ? (
+                        <div className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-medium animate-pulse">
+                            ⚠️ ESCAPED
                         </div>
-
-                        {/* Battery */}
-                        <div className={`flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full text-${batteryColor}-400`}>
-                            <span>🔋</span>
-                            <span className="text-sm">{status?.battery_percent || 0}%</span>
+                    ) : status?.is_home ? (
+                        <div className="px-4 py-2 bg-emerald-100 text-emerald-600 rounded-xl text-sm font-medium">
+                            🏠 At Home
                         </div>
-
-                        {/* Location Status */}
-                        {status?.is_escaped ? (
-                            <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
-                                ⚠️ ESCAPED
-                            </span>
-                        ) : status?.is_home ? (
-                            <span className="bg-green-600 text-white px-3 py-1 rounded-full text-sm">
-                                🏠 Home
-                            </span>
-                        ) : (
-                            <span className="bg-yellow-600 text-black px-3 py-1 rounded-full text-sm">
-                                🚶 Outside
-                            </span>
-                        )}
-
-                        {/* Refresh */}
-                        <button 
-                            onClick={onRefresh}
-                            className="p-2 hover:bg-gray-700 rounded-full transition"
-                            title={`Last refresh: ${lastRefresh?.toLocaleTimeString()}`}
-                        >
-                            🔄
-                        </button>
+                    ) : (
+                        <div className="px-4 py-2 bg-amber-100 text-amber-600 rounded-xl text-sm font-medium">
+                            🚶 Outside
+                        </div>
+                    )}
+                    
+                    {/* Refresh Button */}
+                    <button 
+                        onClick={onRefresh}
+                        className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                        title={`Last refresh: ${lastRefresh?.toLocaleTimeString()}`}
+                    >
+                        <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                    
+                    {/* Profile */}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center cursor-pointer hover:shadow-lg hover:shadow-violet-200 transition-all">
+                        <span className="text-lg">🐕</span>
                     </div>
                 </div>
             </div>
@@ -381,17 +418,22 @@ function Header({ status, lastRefresh, onRefresh }) {
 
 function AlertBanner({ anomalies }) {
     return (
-        <div className="bg-orange-600 text-white py-2 px-4">
-            <div className="container mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <span className="text-xl">⚠️</span>
-                    <span>
-                        Health Alert: {anomalies[0]?.anomaly_type?.replace('_', ' ')} detected
-                    </span>
+        <div className="mx-6 mt-4">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 text-white shadow-lg shadow-amber-200">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                            <span className="text-xl">⚠️</span>
+                        </div>
+                        <div>
+                            <p className="font-semibold">Health Alert Detected</p>
+                            <p className="text-sm text-white/80">{anomalies[0]?.anomaly_type?.replace('_', ' ')} - {formatDate(anomalies[0]?.detected_at)}</p>
+                        </div>
+                    </div>
+                    <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors">
+                        View Details
+                    </button>
                 </div>
-                <span className="text-sm opacity-75">
-                    {formatDate(anomalies[0]?.detected_at)} {formatTime(anomalies[0]?.detected_at)}
-                </span>
             </div>
         </div>
     );
@@ -399,126 +441,304 @@ function AlertBanner({ anomalies }) {
 
 function EscapeAlert({ status }) {
     return (
-        <div className="bg-red-600 text-white py-4 px-4 animate-pulse">
-            <div className="container mx-auto text-center">
-                <div className="text-3xl mb-2">🚨 ESCAPE ALERT 🚨</div>
-                <p className="text-xl">
-                    Popcorn is {Math.round(status?.distance_from_home || 0)}m from home!
-                </p>
-                <a 
-                    href={`https://maps.google.com/?q=${status?.latitude},${status?.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block mt-3 bg-white text-red-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-100"
-                >
-                    📍 Open in Google Maps
-                </a>
+        <div className="mx-6 mt-4">
+            <div className="bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl p-6 text-white shadow-lg shadow-red-200 animate-pulse">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                        <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <span className="text-3xl">🚨</span>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">ESCAPE ALERT!</p>
+                            <p className="text-white/80">Popcorn is {Math.round(status?.distance_from_home || 0)}m from home</p>
+                        </div>
+                    </div>
+                    <a 
+                        href={`https://maps.google.com/?q=${status?.latitude},${status?.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-6 py-3 bg-white text-red-600 rounded-xl font-semibold hover:shadow-lg transition-all"
+                    >
+                        📍 Open in Maps
+                    </a>
+                </div>
             </div>
         </div>
     );
 }
 
 // =============================================================================
-// NAVIGATION
+// STAT CARD COMPONENT
 // =============================================================================
 
-function TabNav({ activeTab, setActiveTab }) {
-    const tabs = [
-        { id: 'map', label: '📍 Map' },
-        { id: 'activity', label: '🏃 Activity' },
-        { id: 'sleep', label: '😴 Sleep' },
-        { id: 'health', label: '❤️ Health' },
-        { id: 'walks', label: '🚶 Walks' }
-    ];
-
+function StatCard({ icon, label, value, change, changeType, gradient, delay = 0 }) {
     return (
-        <nav className="bg-gray-800 border-b border-gray-700 overflow-x-auto">
-            <div className="container mx-auto px-4">
-                <div className="flex">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition ${
-                                activeTab === tab.id
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+        <div 
+            className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 animate-slideUp"
+            style={{ animationDelay: `${delay}ms` }}
+        >
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-slate-400 text-sm font-medium mb-1">{label}</p>
+                    <p className="text-3xl font-bold text-slate-800">{value}</p>
+                    {change && (
+                        <div className={`flex items-center mt-2 text-sm font-medium ${
+                            changeType === 'up' ? 'text-emerald-500' : changeType === 'down' ? 'text-red-500' : 'text-slate-400'
+                        }`}>
+                            {changeType === 'up' && '↑'}
+                            {changeType === 'down' && '↓'}
+                            <span className="ml-1">{change}</span>
+                        </div>
+                    )}
+                </div>
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient || 'from-violet-500 to-purple-600'} flex items-center justify-center shadow-lg`}>
+                    <span className="text-xl">{icon}</span>
                 </div>
             </div>
-        </nav>
+        </div>
     );
 }
 
 // =============================================================================
-// V6.1: LIVE WALK VERIFICATION CARD (Anti-Cheat)
+// OVERVIEW VIEW
 // =============================================================================
 
-function WalkVerificationCard({ status }) {
-    if (!status?.walk_active) return null;
-
-    const qualityScore = status.walk_quality_score || 0;
-    const verificationStatus = status.walk_verification_status || 'monitoring';
-    const carriedSeconds = status.carried_seconds || 0;
-    const vehicleSeconds = status.vehicle_seconds || 0;
-    const actualWalkSeconds = status.actual_walk_seconds || 0;
-    const walkDuration = status.walk_duration || 1;
+function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistory }) {
+    const activity = getActivityInfo(status?.activity_class);
+    const avgSleepQuality = sleepHistory.length > 0 
+        ? (sleepHistory.reduce((sum, s) => sum + (s.quality_score || 0), 0) / sleepHistory.length).toFixed(0)
+        : '-';
     
-    const carriedPercent = ((carriedSeconds / walkDuration) * 100).toFixed(1);
-    const actualPercent = ((actualWalkSeconds / walkDuration) * 100).toFixed(1);
-
     return (
-        <div className="bg-gray-800 rounded-lg p-4 border-2 border-blue-500 mb-4">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                    🔍 Live Walk Verification
-                    <span className="animate-pulse text-green-400">●</span>
-                </h3>
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getVerificationColor(verificationStatus)}`}>
-                    {verificationStatus.toUpperCase()}
-                </span>
+        <div className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard 
+                    icon="📍"
+                    label="Distance from Home"
+                    value={`${Math.round(status?.distance_from_home || 0)}m`}
+                    change={status?.is_home ? 'At home' : 'Outside'}
+                    changeType={status?.is_home ? 'up' : 'neutral'}
+                    gradient="from-violet-500 to-purple-600"
+                    delay={0}
+                />
+                <StatCard 
+                    icon="👣"
+                    label="Today's Steps"
+                    value={status?.today_steps?.toLocaleString() || '0'}
+                    change="+12.5% from yesterday"
+                    changeType="up"
+                    gradient="from-emerald-400 to-teal-500"
+                    delay={100}
+                />
+                <StatCard 
+                    icon="🚶"
+                    label="Total Walks"
+                    value={walkerStats?.total_walks || 0}
+                    change="This month"
+                    changeType="neutral"
+                    gradient="from-blue-400 to-indigo-500"
+                    delay={200}
+                />
+                <StatCard 
+                    icon="😴"
+                    label="Avg Sleep Quality"
+                    value={avgSleepQuality}
+                    change="Last 7 days"
+                    changeType="neutral"
+                    gradient="from-indigo-400 to-violet-500"
+                    delay={300}
+                />
             </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="text-center">
-                    <p className="text-gray-400 text-xs">Quality Score</p>
-                    <p className={`text-3xl font-bold ${qualityScore >= 70 ? 'text-green-400' : qualityScore >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {qualityScore}
-                    </p>
+            
+            {/* Live Activity Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-800">Current Activity</h3>
+                            <p className="text-slate-400 text-sm">Real-time status</p>
+                        </div>
+                        <span className="flex items-center px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-sm">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full mr-2 animate-pulse"></span>
+                            Live
+                        </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-6">
+                        <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${activity.color} flex items-center justify-center shadow-lg`}>
+                            <span className="text-5xl">{activity.emoji}</span>
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-2xl font-bold text-slate-800 capitalize">{status?.activity_name || 'Unknown'}</h4>
+                            <p className="text-slate-400 mt-1">Last updated: {formatTime(status?.last_seen_at)}</p>
+                            
+                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                <div className="bg-slate-50 rounded-xl p-3 text-center">
+                                    <p className="text-2xl font-bold text-slate-800">{status?.accel_variance?.toFixed(3) || '0'}</p>
+                                    <p className="text-xs text-slate-400">Variance</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-xl p-3 text-center">
+                                    <p className="text-2xl font-bold text-slate-800">{status?.speed?.toFixed(1) || '0'}</p>
+                                    <p className="text-xs text-slate-400">Speed (km/h)</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-xl p-3 text-center">
+                                    <p className="text-2xl font-bold text-slate-800">{status?.satellites || '0'}</p>
+                                    <p className="text-xs text-slate-400">GPS Sats</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="text-center">
-                    <p className="text-gray-400 text-xs">Actual Walking</p>
-                    <p className="text-2xl font-bold text-green-400">{actualPercent}%</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-gray-400 text-xs">Carried</p>
-                    <p className={`text-2xl font-bold ${parseFloat(carriedPercent) > 15 ? 'text-red-400' : 'text-gray-300'}`}>
-                        {carriedPercent}%
-                    </p>
-                </div>
-                <div className="text-center">
-                    <p className="text-gray-400 text-xs">Duration</p>
-                    <p className="text-2xl font-bold">{formatDuration(walkDuration)}</p>
+                
+                {/* Quick Stats */}
+                <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-violet-200">
+                    <h3 className="text-lg font-semibold mb-4">Weekly Summary</h3>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-white/80">Total Distance</span>
+                            <span className="text-xl font-bold">{walkerStats?.total_distance_km || 0} km</span>
+                        </div>
+                        <div className="w-full bg-white/20 rounded-full h-2">
+                            <div className="bg-white rounded-full h-2" style={{ width: '70%' }}></div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-white/80">Avg Quality</span>
+                            <span className="text-xl font-bold">{Math.round(walkerStats?.avg_quality_score || 0)}/100</span>
+                        </div>
+                        <div className="w-full bg-white/20 rounded-full h-2">
+                            <div className="bg-white rounded-full h-2" style={{ width: `${walkerStats?.avg_quality_score || 0}%` }}></div>
+                        </div>
+                        <div className="pt-4 border-t border-white/20">
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                                <div>
+                                    <p className="text-2xl font-bold">{walkerStats?.excellent_walks || 0}</p>
+                                    <p className="text-xs text-white/60">A</p>
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{walkerStats?.good_walks || 0}</p>
+                                    <p className="text-xs text-white/60">B</p>
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{walkerStats?.fair_walks || 0}</p>
+                                    <p className="text-xs text-white/60">C</p>
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{walkerStats?.poor_walks || 0}</p>
+                                    <p className="text-xs text-white/60">F</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            {vehicleSeconds > 0 && (
-                <div className="bg-red-900/50 border border-red-500 rounded p-3 mt-2">
-                    <p className="text-red-400 font-bold">🚗 VEHICLE DETECTED!</p>
-                    <p className="text-gray-300 text-sm">Time in vehicle: {formatDuration(vehicleSeconds)}</p>
+            
+            {/* Live Walk Verification */}
+            {status?.walk_active && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-violet-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+                                <span className="text-xl">🔍</span>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-slate-800">Live Walk Verification</h3>
+                                <p className="text-sm text-slate-400">Anti-cheat monitoring active</p>
+                            </div>
+                        </div>
+                        <span className="px-4 py-2 bg-violet-100 text-violet-600 rounded-xl text-sm font-medium">
+                            {status.walk_verification_status?.toUpperCase() || 'MONITORING'}
+                        </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className={`text-3xl font-bold ${status.walk_quality_score >= 70 ? 'text-emerald-500' : status.walk_quality_score >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
+                                {status.walk_quality_score || 0}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">Quality Score</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold text-emerald-500">
+                                {status.walk_duration ? ((status.actual_walk_seconds / status.walk_duration) * 100).toFixed(0) : 0}%
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">Actual Walking</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className={`text-3xl font-bold ${status.carried_seconds > status.walk_duration * 0.15 ? 'text-red-500' : 'text-slate-600'}`}>
+                                {status.walk_duration ? ((status.carried_seconds / status.walk_duration) * 100).toFixed(0) : 0}%
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">Carried</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold text-slate-800">{formatDuration(status.walk_duration)}</p>
+                            <p className="text-xs text-slate-400 mt-1">Duration</p>
+                        </div>
+                    </div>
+                    
+                    {status.vehicle_seconds > 0 && (
+                        <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
+                            <span className="text-2xl">🚗</span>
+                            <div>
+                                <p className="font-semibold text-red-600">Vehicle Detected!</p>
+                                <p className="text-sm text-red-500">Time in vehicle: {formatDuration(status.vehicle_seconds)}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
-
-            {parseFloat(carriedPercent) > 15 && (
-                <div className="bg-orange-900/50 border border-orange-500 rounded p-3 mt-2">
-                    <p className="text-orange-400 font-bold">⚠️ Excessive Carrying</p>
-                    <p className="text-gray-300 text-sm">Popcorn was carried {carriedPercent}% of the walk (limit: 15%)</p>
+            
+            {/* Recent Locations */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Recent Activity</h3>
+                        <p className="text-slate-400 text-sm">{locations.length} points in last 24 hours</p>
+                    </div>
+                    <button className="px-4 py-2 text-sm font-medium text-violet-600 hover:bg-violet-50 rounded-xl transition-colors">
+                        View All →
+                    </button>
                 </div>
-            )}
+                
+                <div className="overflow-hidden rounded-xl border border-slate-100">
+                    <table className="w-full">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Time</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Activity</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Speed</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {locations.slice(-5).reverse().map((loc, i) => {
+                                const act = getActivityInfo(loc.activity_class);
+                                return (
+                                    <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                        <td className="py-3 px-4 text-sm text-slate-600">{formatTime(loc.recorded_at)}</td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex items-center space-x-2">
+                                                <span>{act.emoji}</span>
+                                                <span className="text-sm text-slate-600">{act.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-sm text-slate-600">{loc.speed?.toFixed(1) || 0} km/h</td>
+                                        <td className="py-3 px-4">
+                                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                                loc.is_escaped ? 'bg-red-100 text-red-600' :
+                                                loc.is_home ? 'bg-emerald-100 text-emerald-600' :
+                                                'bg-amber-100 text-amber-600'
+                                            }`}>
+                                                {loc.is_escaped ? '⚠️ Escaped' : loc.is_home ? '🏠 Home' : '🚶 Outside'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 }
@@ -530,119 +750,48 @@ function WalkVerificationCard({ status }) {
 function MapView({ status, locations }) {
     const lat = status?.latitude || 28.5355;
     const lon = status?.longitude || 77.21;
-    
-    // OpenStreetMap embed (no API key needed)
     const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.005},${lat-0.005},${lon+0.005},${lat+0.005}&layer=mapnik&marker=${lat},${lon}`;
 
     return (
         <div className="space-y-6">
-            {/* V6.1: Live Walk Verification */}
-            <WalkVerificationCard status={status} />
-            
-            {/* Status Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard 
-                    icon="📍" 
-                    label="Location"
-                    value={status?.is_home ? 'Home' : 'Outside'}
-                    detail={`${Math.round(status?.distance_from_home || 0)}m away`}
-                />
-                <StatCard 
-                    icon={getActivityEmoji(status?.activity_class)}
-                    label="Activity"
-                    value={status?.activity_name || 'Unknown'}
-                />
-                <StatCard 
-                    icon="📶"
-                    label="Signal"
-                    value={status?.signal_strength || 0}
-                    detail={status?.network_operator || '-'}
-                />
-                <StatCard 
-                    icon="🛰️"
-                    label="GPS"
-                    value={`${status?.satellites || 0} sats`}
-                    detail={`HDOP: ${status?.hdop?.toFixed(1) || '-'}`}
-                />
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <StatCard icon="📍" label="Location" value={status?.is_home ? 'Home' : 'Outside'} gradient="from-violet-500 to-purple-600" />
+                <StatCard icon={getActivityInfo(status?.activity_class).emoji} label="Activity" value={status?.activity_name || 'Unknown'} gradient="from-emerald-400 to-teal-500" />
+                <StatCard icon="📶" label="Signal" value={status?.signal_strength || 0} gradient="from-blue-400 to-indigo-500" />
+                <StatCard icon="🛰️" label="GPS Satellites" value={status?.satellites || 0} gradient="from-orange-400 to-rose-500" />
             </div>
 
-            {/* Map */}
-            <div className="bg-gray-800 rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+            {/* Map Card */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                     <div>
-                        <h2 className="text-lg font-bold">Live Location</h2>
-                        <p className="text-gray-400 text-sm">
-                            Updated: {formatTime(status?.last_seen_at)}
-                        </p>
+                        <h3 className="text-lg font-semibold text-slate-800">Live Location</h3>
+                        <p className="text-slate-400 text-sm">Updated: {formatTime(status?.last_seen_at)}</p>
                     </div>
                     <a 
                         href={`https://maps.google.com/?q=${lat},${lon}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-700"
+                        className="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:shadow-violet-200 transition-all"
                     >
                         Open in Maps
                     </a>
                 </div>
-                <div className="relative" style={{ height: '400px' }}>
+                <div className="relative h-96">
                     <iframe
                         title="Location Map"
                         width="100%"
                         height="100%"
                         frameBorder="0"
                         src={mapUrl}
-                        style={{ border: 0 }}
                     />
-                    <div className="absolute bottom-4 left-4 bg-black/75 px-3 py-2 rounded text-sm">
-                        <div>Lat: {lat.toFixed(6)}</div>
-                        <div>Lon: {lon.toFixed(6)}</div>
+                    <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
+                        <div className="text-sm">
+                            <p className="text-slate-400">Coordinates</p>
+                            <p className="font-mono font-medium text-slate-800">{lat.toFixed(6)}, {lon.toFixed(6)}</p>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Recent Locations */}
-            <div className="bg-gray-800 rounded-lg p-4">
-                <h2 className="text-lg font-bold mb-4">Location History ({locations.length} points)</h2>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="text-gray-400 border-b border-gray-700">
-                                <th className="text-left py-2">Time</th>
-                                <th className="text-left py-2">Activity</th>
-                                <th className="text-left py-2">Speed</th>
-                                <th className="text-left py-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {locations.slice(-10).reverse().map((loc, i) => (
-                                <tr key={i} className="border-b border-gray-700/50">
-                                    <td className="py-2">{formatTime(loc.recorded_at)}</td>
-                                    <td className="py-2">
-                                        {getActivityEmoji(loc.activity_class)} {['Rest','Still','Walk','Run','Play'][loc.activity_class] || '-'}
-                                    </td>
-                                    <td className="py-2">{loc.speed?.toFixed(1) || 0} km/h</td>
-                                    <td className="py-2">
-                                        {loc.is_escaped ? '⚠️ Escaped' : loc.is_home ? '🏠 Home' : '🚶 Out'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function StatCard({ icon, label, value, detail }) {
-    return (
-        <div className="bg-gray-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-                <span className="text-2xl">{icon}</span>
-                <div>
-                    <p className="text-gray-400 text-sm">{label}</p>
-                    <p className="text-lg font-bold">{value}</p>
-                    {detail && <p className="text-gray-500 text-xs">{detail}</p>}
                 </div>
             </div>
         </div>
@@ -654,68 +803,95 @@ function StatCard({ icon, label, value, detail }) {
 // =============================================================================
 
 function ActivityView({ status, locations }) {
-    // Calculate activity breakdown
     const breakdown = locations.reduce((acc, loc) => {
-        const name = ['Resting','Still','Walking','Running','Playing'][loc.activity_class] || 'Unknown';
+        const name = getActivityInfo(loc.activity_class).name;
         acc[name] = (acc[name] || 0) + 1;
         return acc;
     }, {});
+    
+    const total = Object.values(breakdown).reduce((a, b) => a + b, 0) || 1;
 
     return (
         <div className="space-y-6">
-            {/* Current Activity */}
-            <div className="bg-gray-800 rounded-lg p-6 text-center">
-                <div className="text-6xl mb-4">{getActivityEmoji(status?.activity_class)}</div>
-                <h2 className="text-2xl font-bold capitalize mb-2">{status?.activity_name || 'Unknown'}</h2>
-                <div className="grid grid-cols-3 gap-4 mt-6 text-sm">
-                    <div>
-                        <p className="text-gray-400">Today's Steps</p>
-                        <p className="text-2xl font-bold">{status?.today_steps || 0}</p>
+            {/* Current Activity Hero */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
+                <div className="flex flex-col lg:flex-row items-center justify-between">
+                    <div className="flex items-center space-x-6 mb-6 lg:mb-0">
+                        <div className={`w-28 h-28 rounded-2xl bg-gradient-to-br ${getActivityInfo(status?.activity_class).color} flex items-center justify-center shadow-xl`}>
+                            <span className="text-6xl">{getActivityInfo(status?.activity_class).emoji}</span>
+                        </div>
+                        <div>
+                            <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Current Activity</p>
+                            <h2 className="text-4xl font-bold text-slate-800 capitalize mt-1">{status?.activity_name || 'Unknown'}</h2>
+                            <p className="text-slate-400 mt-2">Last updated {formatTime(status?.last_seen_at)}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-gray-400">Variance</p>
-                        <p className="text-2xl font-bold">{status?.accel_variance?.toFixed(4) || 0}</p>
-                    </div>
-                    <div>
-                        <p className="text-gray-400">Session Steps</p>
-                        <p className="text-2xl font-bold">{status?.session_steps || 0}</p>
+                    
+                    <div className="grid grid-cols-3 gap-6">
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-slate-800">{status?.today_steps?.toLocaleString() || 0}</p>
+                            <p className="text-sm text-slate-400">Today's Steps</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-slate-800">{status?.accel_variance?.toFixed(3) || 0}</p>
+                            <p className="text-sm text-slate-400">Variance</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-slate-800">{status?.session_steps || 0}</p>
+                            <p className="text-sm text-slate-400">Session Steps</p>
+                        </div>
                     </div>
                 </div>
             </div>
-
+            
             {/* Activity Breakdown */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">Today's Activity Breakdown</h2>
-                <div className="grid grid-cols-5 gap-2">
-                    {Object.entries(breakdown).map(([name, count]) => (
-                        <div key={name} className="text-center p-3 bg-gray-700 rounded">
-                            <div className="text-2xl font-bold">{count}</div>
-                            <div className="text-xs text-gray-400">{name}</div>
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Today's Activity Breakdown</h3>
+                <div className="space-y-4">
+                    {Object.entries(breakdown).map(([name, count]) => {
+                        const percent = ((count / total) * 100).toFixed(0);
+                        const activity = Object.values([
+                            { name: 'Resting', color: 'from-slate-400 to-slate-500' },
+                            { name: 'Still', color: 'from-blue-400 to-blue-500' },
+                            { name: 'Walking', color: 'from-emerald-400 to-emerald-500' },
+                            { name: 'Running', color: 'from-orange-400 to-orange-500' },
+                            { name: 'Playing', color: 'from-pink-400 to-pink-500' }
+                        ]).find(a => a.name === name) || { color: 'from-gray-400 to-gray-500' };
+                        
+                        return (
+                            <div key={name} className="flex items-center space-x-4">
+                                <div className="w-24 text-sm font-medium text-slate-600">{name}</div>
+                                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className={`h-full bg-gradient-to-r ${activity.color} rounded-full transition-all duration-500`}
+                                        style={{ width: `${percent}%` }}
+                                    ></div>
+                                </div>
+                                <div className="w-16 text-right text-sm font-semibold text-slate-800">{percent}%</div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+            
+            {/* Accelerometer */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Accelerometer Data</h3>
+                <div className="grid grid-cols-4 gap-4">
+                    {[
+                        { label: 'X-Axis', value: status?.accel_x?.toFixed(3) || 0, color: 'from-red-400 to-rose-500' },
+                        { label: 'Y-Axis', value: status?.accel_y?.toFixed(3) || 0, color: 'from-emerald-400 to-teal-500' },
+                        { label: 'Z-Axis', value: status?.accel_z?.toFixed(3) || 0, color: 'from-blue-400 to-indigo-500' },
+                        { label: 'Magnitude', value: status?.accel_magnitude?.toFixed(2) || 0, color: 'from-violet-400 to-purple-500' }
+                    ].map((item) => (
+                        <div key={item.label} className="bg-slate-50 rounded-xl p-4">
+                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center mb-3 shadow-md`}>
+                                <span className="text-white text-sm font-bold">{item.label[0]}</span>
+                            </div>
+                            <p className="text-2xl font-bold text-slate-800 font-mono">{item.value}g</p>
+                            <p className="text-xs text-slate-400">{item.label}</p>
                         </div>
                     ))}
-                </div>
-            </div>
-
-            {/* Accelerometer Data */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">Accelerometer</h2>
-                <div className="grid grid-cols-4 gap-4">
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">X</p>
-                        <p className="text-xl font-mono">{status?.accel_x?.toFixed(3) || 0}g</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Y</p>
-                        <p className="text-xl font-mono">{status?.accel_y?.toFixed(3) || 0}g</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Z</p>
-                        <p className="text-xl font-mono">{status?.accel_z?.toFixed(3) || 0}g</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Magnitude</p>
-                        <p className="text-xl font-mono">{status?.accel_magnitude?.toFixed(2) || 0}g</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -735,70 +911,75 @@ function SleepView({ sleepHistory, status }) {
         <div className="space-y-6">
             {/* Current Sleep Status */}
             {status?.sleep_active && (
-                <div className="bg-indigo-900/50 border border-indigo-500 rounded-lg p-6 text-center">
-                    <div className="text-4xl mb-2">😴</div>
-                    <h2 className="text-xl font-bold">Popcorn is Sleeping</h2>
-                    <div className="grid grid-cols-3 gap-4 mt-4">
-                        <div>
-                            <p className="text-gray-400 text-sm">Quality</p>
-                            <p className="text-2xl font-bold">{status?.sleep_quality?.toFixed(0) || '-'}</p>
+                <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                                <span className="text-4xl">😴</span>
+                            </div>
+                            <div>
+                                <p className="text-xl font-bold">Popcorn is Sleeping</p>
+                                <p className="text-white/80">Sweet dreams!</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-gray-400 text-sm">Respiratory</p>
-                            <p className="text-2xl font-bold">{status?.respiratory_rate?.toFixed(0) || '-'} bpm</p>
-                        </div>
-                        <div>
-                            <p className="text-gray-400 text-sm">Restless</p>
-                            <p className="text-2xl font-bold">{status?.restless_count || 0}</p>
+                        <div className="grid grid-cols-3 gap-8">
+                            <div className="text-center">
+                                <p className="text-3xl font-bold">{status?.sleep_quality?.toFixed(0) || '-'}</p>
+                                <p className="text-xs text-white/60">Quality</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold">{status?.respiratory_rate?.toFixed(0) || '-'}</p>
+                                <p className="text-xs text-white/60">Breaths/min</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-3xl font-bold">{status?.restless_count || 0}</p>
+                                <p className="text-xs text-white/60">Restless</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Avg Quality</p>
-                    <p className="text-3xl font-bold">{avgQuality.toFixed(0)}</p>
-                    <p className="text-gray-500 text-xs">/100</p>
-                </div>
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Sessions</p>
-                    <p className="text-3xl font-bold">{sleepHistory.length}</p>
-                    <p className="text-gray-500 text-xs">this week</p>
-                </div>
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Last Night</p>
-                    <p className="text-3xl font-bold">{sleepHistory[0]?.quality_score?.toFixed(0) || '-'}</p>
-                    <p className="text-gray-500 text-xs">quality</p>
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard icon="⭐" label="Avg Quality" value={avgQuality.toFixed(0)} gradient="from-amber-400 to-orange-500" />
+                <StatCard icon="🌙" label="Sleep Sessions" value={sleepHistory.length} gradient="from-indigo-400 to-violet-500" />
+                <StatCard icon="📊" label="Last Night" value={sleepHistory[0]?.quality_score?.toFixed(0) || '-'} gradient="from-emerald-400 to-teal-500" />
             </div>
 
             {/* Sleep History */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">Sleep History</h2>
-                <div className="space-y-3">
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Sleep History</h3>
+                <div className="space-y-4">
                     {sleepHistory.map((session, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-gray-700/50 rounded">
-                            <div>
-                                <p className="font-bold">{formatDate(session.started_at)}</p>
-                                <p className="text-gray-400 text-sm">
-                                    {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : '-'}
-                                </p>
+                        <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-violet-500 rounded-xl flex items-center justify-center">
+                                    <span className="text-xl">🌙</span>
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-slate-800">{formatDate(session.started_at)}</p>
+                                    <p className="text-sm text-slate-400">
+                                        {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : 'In progress'}
+                                    </p>
+                                </div>
                             </div>
                             <div className="text-right">
-                                <p className={`text-2xl font-bold ${
-                                    session.quality_score > 80 ? 'text-green-400' :
-                                    session.quality_score > 50 ? 'text-yellow-400' : 'text-red-400'
+                                <div className={`text-2xl font-bold ${
+                                    session.quality_score > 80 ? 'text-emerald-500' :
+                                    session.quality_score > 50 ? 'text-amber-500' : 'text-red-500'
                                 }`}>
                                     {session.quality_score?.toFixed(0) || '-'}
-                                </p>
-                                <p className="text-gray-500 text-xs">{session.restless_count || 0} restless</p>
+                                </div>
+                                <p className="text-xs text-slate-400">{session.restless_count || 0} restless periods</p>
                             </div>
                         </div>
                     ))}
                     {sleepHistory.length === 0 && (
-                        <p className="text-center text-gray-400 py-8">No sleep data yet</p>
+                        <div className="text-center py-12">
+                            <span className="text-4xl">🌙</span>
+                            <p className="text-slate-400 mt-2">No sleep data recorded yet</p>
+                        </div>
                     )}
                 </div>
             </div>
@@ -813,68 +994,78 @@ function SleepView({ sleepHistory, status }) {
 function HealthView({ scratchHistory, anomalies }) {
     const totalScratches = scratchHistory.reduce((sum, d) => sum + (d.total_count || 0), 0);
     const avgDaily = scratchHistory.length > 0 ? totalScratches / scratchHistory.length : 0;
+    const maxDaily = Math.max(...scratchHistory.map(d => d.total_count || 0), 1);
 
     return (
         <div className="space-y-6">
-            {/* Scratch Summary */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">🐾 Scratch Monitoring</h2>
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Total (7 days)</p>
-                        <p className="text-3xl font-bold">{totalScratches}</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Daily Avg</p>
-                        <p className="text-3xl font-bold">{avgDaily.toFixed(1)}</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-gray-400 text-sm">Status</p>
-                        <p className={`text-3xl font-bold ${avgDaily > 15 ? 'text-red-400' : 'text-green-400'}`}>
-                            {avgDaily > 15 ? '⚠️ High' : '✓ Normal'}
-                        </p>
-                    </div>
-                </div>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard icon="🐾" label="Total Scratches" value={totalScratches} gradient="from-rose-400 to-pink-500" />
+                <StatCard icon="📊" label="Daily Average" value={avgDaily.toFixed(1)} gradient="from-amber-400 to-orange-500" />
+                <StatCard 
+                    icon={avgDaily > 15 ? '⚠️' : '✓'} 
+                    label="Status" 
+                    value={avgDaily > 15 ? 'High' : 'Normal'} 
+                    gradient={avgDaily > 15 ? 'from-red-400 to-rose-500' : 'from-emerald-400 to-teal-500'} 
+                />
+            </div>
 
-                {/* Daily Chart */}
-                <div className="flex items-end justify-between h-24 mt-4">
-                    {scratchHistory.slice(0, 7).reverse().map((day, i) => (
-                        <div key={i} className="flex flex-col items-center flex-1">
-                            <div 
-                                className={`w-full max-w-8 mx-1 rounded-t ${
-                                    day.total_count > 15 ? 'bg-red-500' : 'bg-blue-500'
-                                }`}
-                                style={{ height: `${Math.min(100, day.total_count * 5)}%` }}
-                            />
-                            <p className="text-xs text-gray-400 mt-1">
-                                {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
-                            </p>
-                        </div>
-                    ))}
+            {/* Scratch Chart */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Scratch Frequency (Last 7 Days)</h3>
+                <div className="flex items-end justify-between h-48 px-4">
+                    {scratchHistory.slice(0, 7).reverse().map((day, i) => {
+                        const height = (day.total_count / maxDaily) * 100;
+                        return (
+                            <div key={i} className="flex flex-col items-center flex-1 mx-1">
+                                <div className="w-full relative" style={{ height: '160px' }}>
+                                    <div 
+                                        className={`absolute bottom-0 w-full rounded-t-lg transition-all duration-500 ${
+                                            day.total_count > 15 ? 'bg-gradient-to-t from-red-500 to-rose-400' : 'bg-gradient-to-t from-violet-500 to-purple-400'
+                                        }`}
+                                        style={{ height: `${height}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">
+                                    {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
+                                </p>
+                                <p className="text-sm font-semibold text-slate-600">{day.total_count}</p>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
             {/* Anomalies */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">❤️ Health Anomalies</h2>
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Health Anomalies</h3>
                 {anomalies.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {anomalies.map((a, i) => (
-                            <div key={i} className="p-4 bg-red-900/30 border border-red-500/50 rounded">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-red-400">{a.anomaly_type?.replace('_', ' ')}</p>
-                                        <p className="text-gray-400 text-sm">{formatDate(a.detected_at)} {formatTime(a.detected_at)}</p>
+                            <div key={i} className="flex items-center justify-between p-4 bg-red-50 border border-red-100 rounded-xl">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                        <span className="text-xl">⚠️</span>
                                     </div>
-                                    <span className="text-sm">{a.deviation_percent?.toFixed(1)}% deviation</span>
+                                    <div>
+                                        <p className="font-semibold text-red-700">{a.anomaly_type?.replace('_', ' ')}</p>
+                                        <p className="text-sm text-red-400">{formatDate(a.detected_at)} at {formatTime(a.detected_at)}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-bold text-red-600">{a.deviation_percent?.toFixed(1)}%</p>
+                                    <p className="text-xs text-red-400">deviation</p>
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <span className="text-4xl">✅</span>
-                        <p className="text-gray-400 mt-2">No anomalies detected</p>
+                    <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl">✅</span>
+                        </div>
+                        <p className="text-slate-600 font-medium">All Clear!</p>
+                        <p className="text-slate-400 text-sm">No health anomalies detected</p>
                     </div>
                 )}
             </div>
@@ -883,161 +1074,212 @@ function HealthView({ scratchHistory, anomalies }) {
 }
 
 // =============================================================================
-// WALKS VIEW (V6.1: With Anti-Cheat Stats)
+// WALKS VIEW
 // =============================================================================
 
-function WalksView({ walkHistory, walkerStats }) {
-    const totalDistance = walkHistory.reduce((sum, w) => sum + (w.distance_meters || 0), 0);
-    const avgScore = walkHistory.filter(w => w.grade_score || w.quality_score).length > 0
-        ? walkHistory.reduce((sum, w) => sum + (w.quality_score || w.grade_score || 0), 0) / walkHistory.filter(w => w.grade_score || w.quality_score).length
-        : 0;
+function WalksView({ walkHistory, walkerStats, status }) {
+    const getGradeColor = (grade) => {
+        switch (grade) {
+            case 'A': return 'from-emerald-400 to-teal-500';
+            case 'B': return 'from-blue-400 to-indigo-500';
+            case 'C': return 'from-amber-400 to-orange-500';
+            case 'F': return 'from-red-400 to-rose-500';
+            default: return 'from-slate-400 to-slate-500';
+        }
+    };
 
-    // Helper to get cheat flag icons
     const getCheatFlags = (flags) => {
         const issues = [];
-        if (flags & 0x01) issues.push('🎒 Carried');
-        if (flags & 0x02) issues.push('🚗 Vehicle');
-        if (flags & 0x04) issues.push('⏸️ Long Stops');
-        if (flags & 0x08) issues.push('🦮 Leash Only');
+        if (flags & 0x01) issues.push({ icon: '🎒', label: 'Carried' });
+        if (flags & 0x02) issues.push({ icon: '🚗', label: 'Vehicle' });
+        if (flags & 0x04) issues.push({ icon: '⏸️', label: 'Long Stop' });
+        if (flags & 0x08) issues.push({ icon: '🦮', label: 'Leash Only' });
         return issues;
     };
 
     return (
         <div className="space-y-6">
-            {/* V6.1: Walker Performance Summary */}
-            {walkerStats && (
-                <div className="bg-gray-800 rounded-lg p-4">
-                    <h2 className="text-lg font-bold mb-4">📊 Walker Performance (7 Days)</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div className="text-center">
-                            <p className="text-gray-400 text-xs">Avg Quality</p>
-                            <p className={`text-3xl font-bold ${walkerStats.avg_quality_score >= 70 ? 'text-green-400' : walkerStats.avg_quality_score >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                {Math.round(walkerStats.avg_quality_score || 0)}
-                            </p>
+            {/* Live Walk Card */}
+            {status?.walk_active && (
+                <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg shadow-violet-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                                <span className="text-2xl">🚶</span>
+                            </div>
+                            <div>
+                                <p className="text-xl font-bold">Walk in Progress</p>
+                                <p className="text-white/80">Anti-cheat monitoring active</p>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-gray-400 text-xs">Total Walks</p>
-                            <p className="text-3xl font-bold">{walkerStats.total_walks || 0}</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-gray-400 text-xs">Distance</p>
-                            <p className="text-3xl font-bold text-blue-400">{walkerStats.total_distance_km || 0} km</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-gray-400 text-xs">Issues</p>
-                            <p className={`text-3xl font-bold ${walkerStats.vehicle_incidents > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                {walkerStats.vehicle_incidents || 0}
-                            </p>
-                        </div>
+                        <span className="flex items-center px-4 py-2 bg-white/20 rounded-xl text-sm">
+                            <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                            LIVE
+                        </span>
                     </div>
-                    
-                    {/* Grade Distribution */}
-                    <div className="flex justify-around">
-                        <div className="text-center">
-                            <span className="text-green-400 text-2xl font-bold">{walkerStats.excellent_walks || 0}</span>
-                            <p className="text-xs text-gray-400">A Walks</p>
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="bg-white/10 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold">{status.walk_quality_score || 0}</p>
+                            <p className="text-xs text-white/60">Quality</p>
                         </div>
-                        <div className="text-center">
-                            <span className="text-blue-400 text-2xl font-bold">{walkerStats.good_walks || 0}</span>
-                            <p className="text-xs text-gray-400">B Walks</p>
+                        <div className="bg-white/10 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold">{formatDuration(status.walk_duration)}</p>
+                            <p className="text-xs text-white/60">Duration</p>
                         </div>
-                        <div className="text-center">
-                            <span className="text-yellow-400 text-2xl font-bold">{walkerStats.fair_walks || 0}</span>
-                            <p className="text-xs text-gray-400">C Walks</p>
+                        <div className="bg-white/10 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold">{((status.walk_distance || 0) / 1000).toFixed(2)}</p>
+                            <p className="text-xs text-white/60">Distance (km)</p>
                         </div>
-                        <div className="text-center">
-                            <span className="text-red-400 text-2xl font-bold">{walkerStats.poor_walks || 0}</span>
-                            <p className="text-xs text-gray-400">F Walks</p>
+                        <div className="bg-white/10 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold">{status.walk_stops || 0}</p>
+                            <p className="text-xs text-white/60">Stops</p>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Total Walks</p>
-                    <p className="text-3xl font-bold">{walkHistory.length}</p>
-                    <p className="text-gray-500 text-xs">this month</p>
+            {/* Walker Performance */}
+            {walkerStats && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-800">Walker Performance</h3>
+                            <p className="text-slate-400 text-sm">Last 30 days summary</p>
+                        </div>
+                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${
+                            walkerStats.avg_quality_score >= 70 ? 'bg-emerald-100 text-emerald-600' :
+                            walkerStats.avg_quality_score >= 50 ? 'bg-amber-100 text-amber-600' :
+                            'bg-red-100 text-red-600'
+                        }`}>
+                            Avg Score: {Math.round(walkerStats.avg_quality_score)}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold text-slate-800">{walkerStats.total_walks}</p>
+                            <p className="text-xs text-slate-400">Total Walks</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold text-violet-600">{walkerStats.total_distance_km} km</p>
+                            <p className="text-xs text-slate-400">Distance</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className="text-3xl font-bold text-slate-800">{walkerStats.avg_carried_percent?.toFixed(1) || 0}%</p>
+                            <p className="text-xs text-slate-400">Avg Carried</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-4 text-center">
+                            <p className={`text-3xl font-bold ${walkerStats.vehicle_incidents > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                {walkerStats.vehicle_incidents}
+                            </p>
+                            <p className="text-xs text-slate-400">Vehicle Issues</p>
+                        </div>
+                    </div>
+                    
+                    {/* Grade Distribution */}
+                    <div className="flex items-center justify-center space-x-4">
+                        {[
+                            { grade: 'A', count: walkerStats.excellent_walks, color: 'emerald' },
+                            { grade: 'B', count: walkerStats.good_walks, color: 'blue' },
+                            { grade: 'C', count: walkerStats.fair_walks, color: 'amber' },
+                            { grade: 'F', count: walkerStats.poor_walks, color: 'red' }
+                        ].map((item) => (
+                            <div key={item.grade} className="text-center">
+                                <div className={`w-16 h-16 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-2`}>
+                                    <span className={`text-2xl font-bold text-${item.color}-600`}>{item.count}</span>
+                                </div>
+                                <p className="text-sm font-semibold text-slate-600">Grade {item.grade}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Total Distance</p>
-                    <p className="text-3xl font-bold">{(totalDistance / 1000).toFixed(1)}</p>
-                    <p className="text-gray-500 text-xs">km</p>
-                </div>
-                <div className="bg-gray-800 rounded-lg p-4 text-center">
-                    <p className="text-gray-400 text-sm">Avg Grade</p>
-                    <p className="text-3xl font-bold">{avgScore.toFixed(0)}</p>
-                    <p className="text-gray-500 text-xs">/100</p>
-                </div>
-            </div>
+            )}
 
             {/* Walk History */}
-            <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-lg font-bold mb-4">Walk History</h2>
-                <div className="space-y-3">
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Walk History</h3>
+                <div className="space-y-4">
                     {walkHistory.map((walk, i) => {
                         const cheatIssues = getCheatFlags(walk.cheat_flags || 0);
+                        const score = walk.quality_score || walk.grade_score || 0;
                         
                         return (
-                            <div key={i} className={`p-4 rounded ${walk.vehicle_detected ? 'bg-red-900/30 border border-red-500' : 'bg-gray-700/50'}`}>
+                            <div 
+                                key={i} 
+                                className={`p-4 rounded-xl border transition-all hover:shadow-md ${
+                                    walk.vehicle_detected ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-100'
+                                }`}
+                            >
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-bold">{formatDate(walk.started_at)}</p>
-                                        <p className="text-gray-400 text-sm">
-                                            {formatDuration(walk.duration_seconds)} • 
-                                            {((walk.distance_meters || 0) / 1000).toFixed(2)} km • 
-                                            {walk.stop_count || 0} stops
-                                        </p>
-                                        
-                                        {/* V6.1: Anti-cheat details */}
-                                        {walk.carried_percent > 0 && (
-                                            <p className={`text-sm mt-1 ${walk.carried_percent > 15 ? 'text-orange-400' : 'text-gray-500'}`}>
-                                                Carried: {walk.carried_percent?.toFixed(1)}%
-                                                {walk.carried_percent > 15 && ' ⚠️'}
+                                    <div className="flex items-center space-x-4">
+                                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getGradeColor(walk.grade)} flex items-center justify-center shadow-md`}>
+                                            <span className="text-2xl font-bold text-white">{walk.grade || '?'}</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-slate-800">{formatDate(walk.started_at)}</p>
+                                            <p className="text-sm text-slate-400">
+                                                {formatDuration(walk.duration_seconds)} • {((walk.distance_meters || 0) / 1000).toFixed(2)} km • {walk.stop_count || 0} stops
                                             </p>
-                                        )}
-                                        
-                                        {/* Cheat flags */}
-                                        {cheatIssues.length > 0 && (
-                                            <div className="flex gap-2 mt-2 flex-wrap">
-                                                {cheatIssues.map((issue, j) => (
-                                                    <span key={j} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded">
-                                                        {issue}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                            {walk.carried_percent > 0 && (
+                                                <p className={`text-sm ${walk.carried_percent > 15 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                    Carried: {walk.carried_percent?.toFixed(1)}% {walk.carried_percent > 15 && '⚠️'}
+                                                </p>
+                                            )}
+                                            {cheatIssues.length > 0 && (
+                                                <div className="flex gap-2 mt-2">
+                                                    {cheatIssues.map((issue, j) => (
+                                                        <span key={j} className="inline-flex items-center px-2 py-1 bg-red-100 text-red-600 rounded-lg text-xs">
+                                                            {issue.icon} {issue.label}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-3xl font-bold ${getGradeColor(walk.grade)}`}>
-                                            {walk.grade || '-'}
-                                        </span>
-                                        <p className="text-gray-500 text-xs">{walk.quality_score || walk.grade_score || '-'}/100</p>
-                                        {walk.verification_status && (
-                                            <span className={`text-xs px-2 py-0.5 rounded ${getVerificationColor(walk.verification_status)}`}>
-                                                {walk.verification_status}
-                                            </span>
-                                        )}
+                                        <p className={`text-2xl font-bold ${
+                                            score >= 70 ? 'text-emerald-500' :
+                                            score >= 50 ? 'text-amber-500' : 'text-red-500'
+                                        }`}>{score}</p>
+                                        <p className="text-xs text-slate-400">Quality Score</p>
                                     </div>
                                 </div>
                             </div>
                         );
                     })}
                     {walkHistory.length === 0 && (
-                        <p className="text-center text-gray-400 py-8">No walk data yet</p>
+                        <div className="text-center py-12">
+                            <span className="text-4xl">🚶</span>
+                            <p className="text-slate-400 mt-2">No walks recorded yet</p>
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* V6.1: Grading explanation */}
-            <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-4">
-                <h3 className="font-bold text-yellow-400 mb-2">🔍 Anti-Cheat Walk Grading</h3>
-                <div className="text-gray-300 text-sm space-y-1">
-                    <p>✅ <strong>Actual Walking:</strong> GPS moving + dog actively walking</p>
-                    <p>🎒 <strong>Carrying:</strong> GPS moving but dog is still (up to 15% OK)</p>
-                    <p>🚗 <strong>Vehicle:</strong> Speed &gt;15 km/h detected = major penalty</p>
-                    <p>⏸️ <strong>Long Stops:</strong> Stopped for &gt;5 minutes = penalty</p>
+            {/* Anti-Cheat Info */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white">
+                <h3 className="text-lg font-semibold mb-4">🔍 Anti-Cheat Walk Verification</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white/10 rounded-xl p-4">
+                        <span className="text-2xl mb-2 block">✅</span>
+                        <p className="font-medium">Actual Walking</p>
+                        <p className="text-xs text-white/60">GPS moving + dog active</p>
+                    </div>
+                    <div className="bg-white/10 rounded-xl p-4">
+                        <span className="text-2xl mb-2 block">🎒</span>
+                        <p className="font-medium">Carrying</p>
+                        <p className="text-xs text-white/60">GPS moving, dog still (15% OK)</p>
+                    </div>
+                    <div className="bg-white/10 rounded-xl p-4">
+                        <span className="text-2xl mb-2 block">🚗</span>
+                        <p className="font-medium">Vehicle</p>
+                        <p className="text-xs text-white/60">Speed &gt;15 km/h = penalty</p>
+                    </div>
+                    <div className="bg-white/10 rounded-xl p-4">
+                        <span className="text-2xl mb-2 block">⏸️</span>
+                        <p className="font-medium">Long Stops</p>
+                        <p className="text-xs text-white/60">&gt;5 min stop = penalty</p>
+                    </div>
                 </div>
             </div>
         </div>
