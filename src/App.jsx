@@ -1,7 +1,7 @@
 // =============================================================================
-// POPCORN GPS COLLAR V6.1 - PREMIUM DASHBOARD
+// POPCORN GPS COLLAR V6.1 - PREMIUM DASHBOARD (PROPERLY FIXED)
 // =============================================================================
-// Modern UI with Vuexy-inspired design: gradients, shadows, animations
+// Modern UI with Vuexy-inspired design + correct React hooks handling
 // =============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -15,7 +15,10 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const DEVICE_ID = import.meta.env.VITE_DEVICE_ID || 'POPCORN001';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Only create client if env vars exist
+const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY) 
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
 // =============================================================================
 // UTILITY FUNCTIONS
@@ -55,6 +58,7 @@ const getActivityInfo = (activityClass) => {
 // =============================================================================
 
 export default function App() {
+    // ALL HOOKS MUST BE AT THE TOP - NO CONDITIONAL RETURNS BEFORE HOOKS
     const [status, setStatus] = useState(null);
     const [locations, setLocations] = useState([]);
     const [sleepHistory, setSleepHistory] = useState([]);
@@ -69,6 +73,11 @@ export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const fetchData = useCallback(async () => {
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+        
         try {
             setError(null);
             
@@ -150,6 +159,9 @@ export default function App() {
 
     useEffect(() => {
         fetchData();
+        
+        if (!supabase) return;
+        
         const subscription = supabase
             .channel('device_status_changes')
             .on('postgres_changes', {
@@ -169,6 +181,11 @@ export default function App() {
             clearInterval(interval);
         };
     }, [fetchData]);
+
+    // NOW we can do conditional returns AFTER all hooks
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        return <ConfigError />;
+    }
 
     if (loading) {
         return (
@@ -261,6 +278,49 @@ export default function App() {
 }
 
 // =============================================================================
+// CONFIG ERROR COMPONENT
+// =============================================================================
+
+function ConfigError() {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full">
+                <div className="text-center mb-6">
+                    <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                        <span className="text-4xl">⚙️</span>
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Configuration Required</h2>
+                    <p className="text-slate-500">Environment variables are missing</p>
+                </div>
+                
+                <div className="bg-slate-50 rounded-xl p-4 mb-6">
+                    <h3 className="font-semibold text-slate-700 mb-3">Required Variables:</h3>
+                    <div className="space-y-2 font-mono text-sm">
+                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
+                            <span className="text-violet-600">VITE_SUPABASE_URL</span>
+                            <span className={SUPABASE_URL ? "text-emerald-500" : "text-red-500"}>{SUPABASE_URL ? '✓' : '✗'}</span>
+                        </div>
+                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
+                            <span className="text-violet-600">VITE_SUPABASE_ANON_KEY</span>
+                            <span className={SUPABASE_ANON_KEY ? "text-emerald-500" : "text-red-500"}>{SUPABASE_ANON_KEY ? '✓' : '✗'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="text-center">
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                    >
+                        Reload Page
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// =============================================================================
 // SIDEBAR COMPONENT
 // =============================================================================
 
@@ -283,7 +343,7 @@ function Sidebar({ activeTab, setActiveTab, isOpen, status }) {
                         <span className="text-xl">🐕</span>
                     </div>
                     {isOpen && (
-                        <div className="animate-fadeIn">
+                        <div>
                             <h1 className="font-bold text-slate-800">Popcorn</h1>
                             <p className="text-xs text-slate-400">GPS Tracker v6.1</p>
                         </div>
@@ -297,7 +357,7 @@ function Sidebar({ activeTab, setActiveTab, isOpen, status }) {
                     <button
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                             activeTab === item.id
                                 ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-200'
                                 : 'text-slate-600 hover:bg-slate-50'
@@ -395,7 +455,7 @@ function Header({ status, lastRefresh, onRefresh, sidebarOpen, setSidebarOpen })
                     <button 
                         onClick={onRefresh}
                         className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-                        title={`Last refresh: ${lastRefresh?.toLocaleTimeString()}`}
+                        title={`Last refresh: ${lastRefresh?.toLocaleTimeString() || 'Never'}`}
                     >
                         <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -471,12 +531,9 @@ function EscapeAlert({ status }) {
 // STAT CARD COMPONENT
 // =============================================================================
 
-function StatCard({ icon, label, value, change, changeType, gradient, delay = 0 }) {
+function StatCard({ icon, label, value, change, changeType, gradient }) {
     return (
-        <div 
-            className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 animate-slideUp"
-            style={{ animationDelay: `${delay}ms` }}
-        >
+        <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300">
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-slate-400 text-sm font-medium mb-1">{label}</p>
@@ -520,7 +577,6 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                     change={status?.is_home ? 'At home' : 'Outside'}
                     changeType={status?.is_home ? 'up' : 'neutral'}
                     gradient="from-violet-500 to-purple-600"
-                    delay={0}
                 />
                 <StatCard 
                     icon="👣"
@@ -529,7 +585,6 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                     change="+12.5% from yesterday"
                     changeType="up"
                     gradient="from-emerald-400 to-teal-500"
-                    delay={100}
                 />
                 <StatCard 
                     icon="🚶"
@@ -538,7 +593,6 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                     change="This month"
                     changeType="neutral"
                     gradient="from-blue-400 to-indigo-500"
-                    delay={200}
                 />
                 <StatCard 
                     icon="😴"
@@ -547,7 +601,6 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                     change="Last 7 days"
                     changeType="neutral"
                     gradient="from-indigo-400 to-violet-500"
-                    delay={300}
                 />
             </div>
             
@@ -675,29 +728,16 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                             <p className="text-xs text-slate-400 mt-1">Duration</p>
                         </div>
                     </div>
-                    
-                    {status.vehicle_seconds > 0 && (
-                        <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
-                            <span className="text-2xl">🚗</span>
-                            <div>
-                                <p className="font-semibold text-red-600">Vehicle Detected!</p>
-                                <p className="text-sm text-red-500">Time in vehicle: {formatDuration(status.vehicle_seconds)}</p>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
             
-            {/* Recent Locations */}
+            {/* Recent Locations Table */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h3 className="text-lg font-semibold text-slate-800">Recent Activity</h3>
                         <p className="text-slate-400 text-sm">{locations.length} points in last 24 hours</p>
                     </div>
-                    <button className="px-4 py-2 text-sm font-medium text-violet-600 hover:bg-violet-50 rounded-xl transition-colors">
-                        View All →
-                    </button>
                 </div>
                 
                 <div className="overflow-hidden rounded-xl border border-slate-100">
@@ -735,6 +775,13 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
                                     </tr>
                                 );
                             })}
+                            {locations.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" className="py-8 text-center text-slate-400">
+                                        No location data yet. Waiting for device...
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -747,7 +794,7 @@ function OverviewView({ status, locations, walkHistory, walkerStats, sleepHistor
 // MAP VIEW
 // =============================================================================
 
-function MapView({ status, locations }) {
+function MapView({ status }) {
     const lat = status?.latitude || 28.5355;
     const lon = status?.longitude || 77.21;
     const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.005},${lat-0.005},${lon+0.005},${lat+0.005}&layer=mapnik&marker=${lat},${lon}`;
@@ -850,20 +897,20 @@ function ActivityView({ status, locations }) {
                 <div className="space-y-4">
                     {Object.entries(breakdown).map(([name, count]) => {
                         const percent = ((count / total) * 100).toFixed(0);
-                        const activity = Object.values([
-                            { name: 'Resting', color: 'from-slate-400 to-slate-500' },
-                            { name: 'Still', color: 'from-blue-400 to-blue-500' },
-                            { name: 'Walking', color: 'from-emerald-400 to-emerald-500' },
-                            { name: 'Running', color: 'from-orange-400 to-orange-500' },
-                            { name: 'Playing', color: 'from-pink-400 to-pink-500' }
-                        ]).find(a => a.name === name) || { color: 'from-gray-400 to-gray-500' };
+                        const activityColors = {
+                            'Resting': 'from-slate-400 to-slate-500',
+                            'Still': 'from-blue-400 to-blue-500',
+                            'Walking': 'from-emerald-400 to-emerald-500',
+                            'Running': 'from-orange-400 to-orange-500',
+                            'Playing': 'from-pink-400 to-pink-500'
+                        };
                         
                         return (
                             <div key={name} className="flex items-center space-x-4">
                                 <div className="w-24 text-sm font-medium text-slate-600">{name}</div>
                                 <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                                     <div 
-                                        className={`h-full bg-gradient-to-r ${activity.color} rounded-full transition-all duration-500`}
+                                        className={`h-full bg-gradient-to-r ${activityColors[name] || 'from-gray-400 to-gray-500'} rounded-full transition-all duration-500`}
                                         style={{ width: `${percent}%` }}
                                     ></div>
                                 </div>
@@ -871,6 +918,9 @@ function ActivityView({ status, locations }) {
                             </div>
                         );
                     })}
+                    {Object.keys(breakdown).length === 0 && (
+                        <p className="text-center text-slate-400 py-8">No activity data yet</p>
+                    )}
                 </div>
             </div>
             
@@ -1033,6 +1083,11 @@ function HealthView({ scratchHistory, anomalies }) {
                             </div>
                         );
                     })}
+                    {scratchHistory.length === 0 && (
+                        <div className="w-full text-center py-12">
+                            <p className="text-slate-400">No scratch data yet</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1179,14 +1234,14 @@ function WalksView({ walkHistory, walkerStats, status }) {
                     {/* Grade Distribution */}
                     <div className="flex items-center justify-center space-x-4">
                         {[
-                            { grade: 'A', count: walkerStats.excellent_walks, color: 'emerald' },
-                            { grade: 'B', count: walkerStats.good_walks, color: 'blue' },
-                            { grade: 'C', count: walkerStats.fair_walks, color: 'amber' },
-                            { grade: 'F', count: walkerStats.poor_walks, color: 'red' }
+                            { grade: 'A', count: walkerStats.excellent_walks, bg: 'bg-emerald-100', text: 'text-emerald-600' },
+                            { grade: 'B', count: walkerStats.good_walks, bg: 'bg-blue-100', text: 'text-blue-600' },
+                            { grade: 'C', count: walkerStats.fair_walks, bg: 'bg-amber-100', text: 'text-amber-600' },
+                            { grade: 'F', count: walkerStats.poor_walks, bg: 'bg-red-100', text: 'text-red-600' }
                         ].map((item) => (
                             <div key={item.grade} className="text-center">
-                                <div className={`w-16 h-16 rounded-xl bg-${item.color}-100 flex items-center justify-center mb-2`}>
-                                    <span className={`text-2xl font-bold text-${item.color}-600`}>{item.count}</span>
+                                <div className={`w-16 h-16 rounded-xl ${item.bg} flex items-center justify-center mb-2`}>
+                                    <span className={`text-2xl font-bold ${item.text}`}>{item.count}</span>
                                 </div>
                                 <p className="text-sm font-semibold text-slate-600">Grade {item.grade}</p>
                             </div>
